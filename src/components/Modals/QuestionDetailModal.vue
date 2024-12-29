@@ -5,7 +5,7 @@
       <h2 class="question-detail-header">{{ question.question_text }}</h2>
       <div class="question-detail-actions">
         <button class="button" @click="selectAllText">全选</button>
-        <button class="button is-primary" @click="saveDetail">保存</button>
+        <!-- 保存按钮现在在笔记的 tab content 里 -->
       </div>
 
       <div class="question-detail-tabs">
@@ -27,15 +27,25 @@
                 @click="activeTab = 'analysis'">深度解析</button>
       </div>
 
-      <div class="question-detail-tab-content" v-if="activeTab === 'textarea'">
+      <div class="question-detail-tab-content note-tab-content" v-if="activeTab === 'textarea'">
         <textarea class="question-detail-textarea" v-model="detailText"
                   placeholder="在这里写下你的想法、笔记和灵感...可以尝试回答问题，记录思路，或者仅仅是随意的涂鸦。尽情发挥你的创造力吧！"></textarea>
+        <div class="save-status-message" v-if="saveStatus">{{ saveStatus }}</div>
+        <button class="button is-primary save-note-button" @click="saveNote">保存</button>
       </div>
       <div class="question-detail-tab-content" v-if="activeTab === 'hints'">
         这里是提示内容。
       </div>
-      <div class="question-detail-tab-content" v-if="activeTab === 'history'">
-        这里是历史解答。
+      <div class="question-detail-tab-content history-tab-content" v-if="activeTab === 'history'">
+        <div v-if="filteredSavedNotes.length === 0">
+          还没有保存过针对这道题的解答。
+        </div>
+        <ul v-else>
+          <li v-for="(note, index) in filteredSavedNotes" :key="index" class="saved-note-item">
+            <p class="saved-note-text">{{ note.text }}</p>
+            <p class="saved-note-date">{{ formatDate(note.timestamp) }}</p>
+          </li>
+        </ul>
       </div>
       <div class="question-detail-tab-content" v-if="activeTab === 'answer'">
         这里是标准答案。
@@ -64,14 +74,16 @@ export default {
     isOpen: Boolean,
     question: {
       type: Object,
-      default: () => ({ question_text: '' })
+      default: () => ({ question_text: '', id: null }) // Ensure question has an ID
     },
     isFullScreen: Boolean
   },
   data() {
     return {
       detailText: '',
-      activeTab: 'textarea'
+      activeTab: 'textarea',
+      savedNotes: [],
+      saveStatus: '' // 用于显示保存状态消息
     };
   },
   computed: {
@@ -80,6 +92,9 @@ export default {
         'question-detail-modal': true,
         'fullscreen': this.isFullScreen
       };
+    },
+    filteredSavedNotes() {
+      return this.savedNotes.filter(note => note.questionId === this.question.id);
     }
   },
   methods: {
@@ -92,9 +107,22 @@ export default {
         textarea.select();
       }
     },
-    saveDetail() {
-      this.$emit('save-detail', this.detailText);
-      this.close();
+    saveNote() {
+      if (this.detailText.trim() !== '' && this.question.id !== null) {
+        this.savedNotes.push({
+          questionId: this.question.id, // 保存关联的 question ID
+          text: this.detailText,
+          timestamp: new Date()
+        });
+        this.saveStatus = '保存成功！';
+        setTimeout(() => {
+          this.saveStatus = '';
+        }, 2000); // 2秒后清除消息
+      }
+    },
+    formatDate(date) {
+      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
+      return new Intl.DateTimeFormat('zh-CN', options).format(date);
     }
   }
 };
@@ -151,29 +179,6 @@ export default {
   font-size: 1.2rem;
 }
 
-.question-detail-modal.fullscreen .question-detail-textarea {
-  flex-grow: 1;
-  padding: 20px;
-  border: none;
-  background-color: black;
-  color: lightgray;
-  font-size: 2rem;
-  line-height: 1.6;
-  resize: none;
-  outline: none;
-  overflow: auto;
-}
-
-.question-detail-modal.fullscreen .question-detail-close {
-  position: absolute;
-  top: 20px;
-  right: 20px;
-  font-size: 2rem;
-  color: white;
-  cursor: pointer;
-  z-index: 10;
-}
-
 .question-detail-tabs {
   display: flex;
   border-bottom: 1px solid #555;
@@ -208,6 +213,12 @@ export default {
   flex-grow: 1;
   overflow: auto;
   height: calc(100% - 50px);
+  position: relative; /* Add relative positioning for absolute child */
+}
+
+.note-tab-content {
+  display: flex;
+  flex-direction: column;
 }
 
 .question-detail-textarea {
@@ -222,6 +233,47 @@ export default {
   outline: none;
   overflow: auto;
   width: 100%;
-  height: 100%;
+  /* Ensure textarea takes available height, leaving space for the button */
+  margin-bottom: 60px; /* Adjust as needed based on button height and desired spacing */
+}
+
+.save-note-button {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 10px 20px;
+  font-size: 1rem;
+}
+
+.save-status-message {
+  position: absolute;
+  bottom: 50px; /* 调整显示位置 */
+  left: 10px;
+  color: green;
+  font-size: 1rem;
+}
+
+.history-tab-content {
+  color: lightgray; /* Default light color for history tab content */
+}
+
+.question-detail-modal.fullscreen .history-tab-content {
+  color: white; /* Ensure white color in fullscreen mode */
+}
+
+.saved-note-item {
+  border-bottom: 1px solid #666; /* Slightly lighter border for dark background */
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+}
+
+.saved-note-text {
+  font-size: 1rem;
+  margin-bottom: 5px;
+}
+
+.saved-note-date {
+  font-size: 0.8rem;
+  color: #999; /* Slightly lighter date color for dark background */
 }
 </style>
