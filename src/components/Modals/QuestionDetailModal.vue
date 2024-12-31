@@ -2,6 +2,7 @@
   <div :class="modalClass" v-if="isOpen" @keydown.meta.enter="saveNote" @keydown.ctrl.enter="saveNote" 
 @keydown.meta.g.prevent="generateAnswer" @keydown.ctrl.g.prevent="generateAnswer" 
 @keydown.meta.s.prevent="saveAnswer" @keydown.ctrl.s.prevent="saveAnswer"
+@keydown.exact="handleKeyDown"
 >
 
     <div class="question-detail-modal-content">
@@ -132,6 +133,12 @@ export default {
     }
   },
   methods: {
+
+    handleKeyDown(event) {
+      if (event.key === ' ') { // 检查按下的键是否是空格键
+        event.stopPropagation(); // 阻止事件冒泡到父组件
+      }
+    },
     close() {
       this.$emit('close');
     },
@@ -208,7 +215,7 @@ export default {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background-color: black;
+  background-color: rgb(101, 160, 7);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -216,7 +223,7 @@ export default {
 }
 
 .question-detail-modal.fullscreen .question-detail-modal-content {
-  background-color: black;
+  background-color: rgb(101, 160, 7);
   border-radius: 0;
   box-shadow: none;
   width: 100%;
@@ -274,7 +281,7 @@ export default {
   display: flex;
   border-bottom: 1px solid #555;
   margin-bottom: 20px;
-  background-color: #333;
+  background-color: rgb(101, 160, 7);
 }
 
 .question-detail-tab-item {
@@ -316,7 +323,7 @@ export default {
   flex-grow: 1;
   padding: 20px;
   border: none;
-  background-color: black;
+  background-color: rgb(101, 160, 7);
   color: lightgray;
   font-size: 2rem;
   line-height: 1.6;
@@ -482,6 +489,10 @@ export default {
   height: 1.2em;
   animation: spin 1s linear infinite;
   margin-left: 0.5em;
+}
+
+.markdown-body mark strong {
+  color: blue;
 }
 
 @keyframes spin {

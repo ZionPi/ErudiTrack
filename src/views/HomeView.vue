@@ -299,7 +299,7 @@ export default {
         this.prevQuestion();
       } else if (event.key === 'ArrowRight') {
         this.nextQuestion();
-      } else if (event.code === 'Space') {
+      } else if (event.code === 'Space' && !this.isQuestionDetailModalOpen) {
         if (this.currentQuestion.question_id) {
           this.toggleSelectCurrentQuestion();
         }
