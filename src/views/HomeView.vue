@@ -81,6 +81,7 @@
       :is-full-screen="isQuestionDetailFullScreen"
       @close="closeQuestionDetailModal"
       @save-detail="handleSaveDetail"
+      @update-question-prompt="handleUpdateQuestionPrompt"
     />
   </div>
 </template>
@@ -166,7 +167,7 @@ export default {
           return questionList[this.currentIndex % questionList.length];
         }
       } else {
-        return { question_id: null, question_text: '', question_type: '' };
+        return { question_id: null, question_text: '', question_type: '',question_prompt:''};
       }
     },
     uniqueQuestionTypes() {
@@ -522,15 +523,15 @@ export default {
     openQuestionDetailModal() {
       this.isQuestionDetailModalOpen = true;
       this.isQuestionDetailFullScreen = true;
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen();
-      } else if (document.documentElement.mozRequestFullScreen) {
-        document.documentElement.mozRequestFullScreen();
-      } else if (document.documentElement.webkitRequestFullscreen) {
-        document.documentElement.webkitRequestFullscreen();
-      } else if (document.documentElement.msRequestFullscreen) {
-        document.documentElement.msRequestFullscreen();
-      }
+      // if (document.documentElement.requestFullscreen) {
+      //   document.documentElement.requestFullscreen();
+      // } else if (document.documentElement.mozRequestFullScreen) {
+      //   document.documentElement.mozRequestFullScreen();
+      // } else if (document.documentElement.webkitRequestFullscreen) {
+      //   document.documentElement.webkitRequestFullscreen();
+      // } else if (document.documentElement.msRequestFullscreen) {
+      //   document.documentElement.msRequestFullscreen();
+      // }
 
       if (this.$refs.countdownTimer) {
         this.$refs.countdownTimer.stopTimer();
@@ -569,6 +570,20 @@ export default {
       console.log('保存的内容:', detailText);
       this.closeQuestionDetailModal();
     },
+
+   handleUpdateQuestionPrompt(newPrompt) {
+        // Find the index of the current question in the questions array
+        const currentQuestionId = this.currentQuestion.question_id;
+        const questionIndex = this.questions.findIndex(q => q.question_id === currentQuestionId);
+
+        if (questionIndex !== -1) {
+          // Update the question_prompt of the found question
+          this.questions = this.questions.map((question, index) =>
+            index === questionIndex ? { ...question, question_prompt: newPrompt } : question
+          );
+        }
+    },
+
     updateCountdownDuration(value) {
       this.countdownDuration = value;
     },

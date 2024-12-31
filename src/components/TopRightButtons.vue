@@ -1,5 +1,10 @@
 <template>
   <div class="top-right-controls">
+    <button class="button is-small" @click="goToAllNotes">
+      <span class="icon">
+        <i class="fas fa-sticky-note"></i>
+      </span>
+    </button>
     <button class="button is-small" @click.stop="$emit('start-fullscreen')">
       <span class="icon">
         <i class="fas fa-play"></i>
@@ -76,7 +81,12 @@ export default {
     'update-countdown-duration',
     'update-mode',
     'update-category-mode'
-  ]
+  ],
+  methods: {
+    goToAllNotes() {
+      this.$router.push('/all-notes');
+    }
+  }
 };
 </script>
 
