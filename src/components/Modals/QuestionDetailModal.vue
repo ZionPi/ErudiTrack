@@ -1,9 +1,8 @@
 <template>
-  <div :class="modalClass" v-if="isOpen" @keydown.meta.enter="saveNote" @keydown.ctrl.enter="saveNote" 
-@keydown.meta.g.prevent="generateAnswer" @keydown.ctrl.g.prevent="generateAnswer" 
-@keydown.meta.s.prevent="saveAnswer" @keydown.ctrl.s.prevent="saveAnswer"
-@keydown.exact="handleKeyDown"
->
+  <div :class="modalClass" v-if="isOpen" @keydown.meta.enter="saveNote" @keydown.ctrl.enter="saveNote"
+    @keydown.meta.g.prevent="generateContent('answer')" @keydown.ctrl.g.prevent="generateContent('answer')"
+    @keydown.meta.s.prevent="saveContent('answer')" @keydown.ctrl.s.prevent="saveContent('answer')"
+    @keydown.exact="handleKeyDown">
 
     <div class="question-detail-modal-content">
       <span class="question-detail-close" @click="close">×</span>
@@ -15,26 +14,26 @@
 
       <div class="question-detail-tabs">
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'textarea' }"
-                @click="activeTab = 'textarea'">笔记</button>
+          @click="activeTab = 'textarea'">笔记</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'hints' }"
-                @click="activeTab = 'hints'">提示</button>
+          @click="activeTab = 'hints'">提示</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'history' }"
-                @click="activeTab = 'history'">历史解答</button>
+          @click="activeTab = 'history'">历史解答</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'answer' }"
-                @click="activeTab = 'answer'">标准答案</button>
+          @click="activeTab = 'answer'">标准答案</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'truefalse' }"
-                @click="activeTab = 'truefalse'">判断题</button>
+          @click="activeTab = 'truefalse'">判断题</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'multiplechoice' }"
-                @click="activeTab = 'multiplechoice'">选择题</button>
+          @click="activeTab = 'multiplechoice'">选择题</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'fillblank' }"
-                @click="activeTab = 'fillblank'">填空题</button>
+          @click="activeTab = 'fillblank'">填空题</button>
         <button class="question-detail-tab-item" :class="{ active: activeTab === 'analysis' }"
-                @click="activeTab = 'analysis'">深度解析</button>
+          @click="activeTab = 'analysis'">深度解析</button>
       </div>
 
       <div class="question-detail-tab-content note-tab-content" v-if="activeTab === 'textarea'">
         <textarea class="question-detail-textarea" v-model="detailText"
-                  placeholder="在这里写下你的想法、笔记和灵感...可以尝试回答问题，记录思路，或者仅仅是随意的涂鸦。尽情发挥你的创造力吧！"></textarea>
+          placeholder="在这里写下你的想法、笔记和灵感...可以尝试回答问题，记录思路，或者仅仅是随意的涂鸦。尽情发挥你的创造力吧！"></textarea>
         <!-- <div class="save-status-message" v-if="saveStatus">{{ saveStatus }}</div> -->
         <div class="save-status-message" v-if="saveStatus">{{ saveStatus }}</div>
 
@@ -56,23 +55,75 @@
       </div>
       <div class="question-detail-tab-content answer-tab-content" v-if="activeTab === 'answer'">
         <div class="markdown-body scrollable-content" v-html="renderedAnswer"></div>
-        <button class="button answer-action-button generate-button" @click="generateAnswer" :disabled="isLoadingAnswer">
+        <button class="button answer-action-button generate-button" @click="generateContent('answer')"
+          :disabled="isLoading.answer">
           生成
-          <span v-if="isLoadingAnswer" class="loading-spinner"></span>
+          <span v-if="isLoading.answer" class="loading-spinner"></span>
         </button>
-        <button class="button is-primary answer-action-button save-answer-button" @click="saveAnswer">保存</button>
+        <button class="button is-primary answer-action-button save-answer-button"
+          @click="saveContent('answer')">保存</button>
       </div>
-      <div class="question-detail-tab-content" v-if="activeTab === 'truefalse'">
-        这里是判断题内容。
+
+      <div class="question-detail-tab-content derived-question-tab-content" v-if="activeTab === 'truefalse'">
+        <div v-if="generatedTrueFalse">
+          <p class="derived-question-text">{{ generatedTrueFalse.question }}</p>
+          <p class="derived-question-answer">答案: {{ generatedTrueFalse.answer }}</p>
+        </div>
+        <div v-else>
+          判断题内容
+        </div>
+        <button class="button derived-action-button generate-button" @click="generateContent('truefalse')"
+          :disabled="isLoading.truefalse">
+          生成
+          <span v-if="isLoading.truefalse" class="loading-spinner"></span>
+        </button>
+        <button class="button is-primary derived-action-button save-button"
+          @click="saveContent('truefalse')">保存</button>
       </div>
-      <div class="question-detail-tab-content" v-if="activeTab === 'multiplechoice'">
-        这里是选择题内容。
+
+      <div class="question-detail-tab-content derived-question-tab-content" v-if="activeTab === 'multiplechoice'">
+        <div v-if="generatedMultipleChoice">
+          <p class="derived-question-text">{{ generatedMultipleChoice.question }}</p>
+          <ul>
+            <li v-for="(option, index) in generatedMultipleChoice.options" :key="index">
+              <label>
+                <input type="radio" :value="option.text" :name="'multiple-choice-' + question.question_id"
+                  :disabled="false" :checked="option.is_correct">
+                {{ option.text }} <span v-if="option.is_correct">(正确答案)</span>
+              </label>
+            </li>
+          </ul>
+        </div>
+        <div v-else>
+          选择题内容
+        </div>
+        <button class="button derived-action-button generate-button" @click="generateContent('multiplechoice')"
+          :disabled="isLoading.multiplechoice">
+          生成
+          <span v-if="isLoading.multiplechoice" class="loading-spinner"></span>
+        </button>
+        <button class="button is-primary derived-action-button save-button"
+          @click="saveContent('multiplechoice')">保存</button>
       </div>
-      <div class="question-detail-tab-content" v-if="activeTab === 'fillblank'">
-        这里是填空题内容。
-      </div>
-      <div class="question-detail-tab-content" v-if="activeTab === 'analysis'">
-        这里是深度解析。
+
+      <div class="question-detail-tab-content derived-question-tab-content" v-if="activeTab === 'fillblank'">
+        <div v-if="generatedFillBlank">
+          <p class="derived-question-text" v-html="renderFillBlankQuestion">
+          </p>
+          <p v-for="blank in generatedFillBlank.blanks" :key="blank.order">
+            <strong>答案 {{ blank.order }}:</strong> {{ blank.answer }}
+          </p>
+        </div>
+        <div v-else>
+          填空题内容
+        </div>
+        <button class="button derived-action-button generate-button" @click="generateContent('fillblank')"
+          :disabled="isLoading.fillblank">
+          生成
+          <span v-if="isLoading.fillblank" class="loading-spinner"></span>
+        </button>
+        <button class="button is-primary derived-action-button save-button"
+          @click="saveContent('fillblank')">保存</button>
       </div>
 
     </div>
@@ -80,7 +131,13 @@
 </template>
 
 <script>
-import { generateAnswer, saveAnswer } from '@/services/apiService'; // 引入 API 服务
+import {
+  generateAnswer, saveAnswer, generateTrueFalse, generateMultipleChoice, generateFillBlank,
+  createDerivedTrueFalseQuestion, createDerivedMultipleChoiceQuestion, createDerivedFillInTheBlankQuestion,
+  fetchDerivedTrueFalseQuestions,
+  fetchDerivedMultipleChoiceQuestions,
+  fetchDerivedFillInTheBlankQuestions
+} from '@/services/apiService'; // 引入 API 服务
 import { marked } from 'marked'; // 引入 marked 库
 import { showSuccessNotification } from '@/utils/helper'; // 导入通知函数
 
@@ -100,7 +157,18 @@ export default {
       activeTab: 'textarea',
       savedNotes: [],
       saveStatus: '', // 用于显示保存状态消息
-      isLoadingAnswer: false // 新增 loading 状态
+      isLoading: {
+        answer: false,
+        truefalse: false,
+        multiplechoice: false,
+        fillblank: false
+      },
+      generatedTrueFalse: null,
+      generatedMultipleChoice: null,
+      generatedFillBlank: null,
+      derivedTrueFalseQuestions: [],
+      derivedMultipleChoiceQuestions: [],
+      derivedFillBlankQuestions: []
     };
   },
   computed: {
@@ -115,11 +183,40 @@ export default {
     },
     renderedAnswer() {
       return this.question.question_prompt ? marked(this.question.question_prompt) : 'sorry,no answer now.';
+    },
+    renderFillBlankQuestion() {
+      if (this.generatedFillBlank && this.generatedFillBlank.question) {
+        return this.generatedFillBlank.question.replace(/\( \)/g, (match, index) => {
+          const blankNumber = (index / match.length) + 1; // Calculate blank number
+          return `<input type="text" class="fill-blank-input" :placeholder="'答案' + ${blankNumber}" disabled>`;
+        });
+      }
+      return '';
     }
   },
   watch: {
+
+    async activeTab(newTab) {
+      if (newTab === 'truefalse') {
+        await this.getTrueFalseHistory();
+        if (this.derivedTrueFalseQuestions.length > 0) {
+          this.generatedTrueFalse = this.derivedTrueFalseQuestions[Math.floor(Math.random() * this.derivedTrueFalseQuestions.length)];
+        }
+      } else if (newTab === 'multiplechoice') {
+        await this.getMultipleChoiceHistory();
+        if (this.derivedMultipleChoiceQuestions.length > 0) {
+          this.generatedMultipleChoice = this.derivedMultipleChoiceQuestions[Math.floor(Math.random() * this.derivedMultipleChoiceQuestions.length)];
+        }
+      } else if (newTab === 'fillblank') {
+        await this.getFillBlankHistory();
+        if (this.derivedFillBlankQuestions.length > 0) {
+          this.generatedFillBlank = this.derivedFillBlankQuestions[Math.floor(Math.random() * this.derivedFillBlankQuestions.length)];
+        }
+      }
+    },
     question() {
       this.detailText = ''; // 当 question prop 变化时，清空 detailText
+      this.fetchDerivedQuestionData(); // Fetch all types when the main question changes
     }
   },
   mounted() {
@@ -133,7 +230,37 @@ export default {
     }
   },
   methods: {
-
+    async fetchDerivedQuestionData() {
+      if (this.question.question_id) {
+        this.getTrueFalseHistory();
+        this.getMultipleChoiceHistory();
+        this.getFillBlankHistory();
+      }
+    },
+    async getTrueFalseHistory() {
+      try {
+        this.derivedTrueFalseQuestions = await fetchDerivedTrueFalseQuestions(this.question.question_id);
+        console.log('Fetched True/False History:', this.derivedTrueFalseQuestions);
+      } catch (error) {
+        console.error('Error fetching True/False history:', error);
+      }
+    },
+    async getMultipleChoiceHistory() {
+      try {
+        this.derivedMultipleChoiceQuestions = await fetchDerivedMultipleChoiceQuestions(this.question.question_id);
+        console.log('Fetched Multiple Choice History:', this.derivedMultipleChoiceQuestions);
+      } catch (error) {
+        console.error('Error fetching Multiple Choice history:', error);
+      }
+    },
+    async getFillBlankHistory() {
+      try {
+        this.derivedFillBlankQuestions = await fetchDerivedFillInTheBlankQuestions(this.question.question_id);
+        console.log('Fetched Fill-in-the-Blank History:', this.derivedFillBlankQuestions);
+      } catch (error) {
+        console.error('Error fetching Fill-in-the-Blank history:', error);
+      }
+    },
     handleKeyDown(event) {
       if (event.key === ' ') { // 检查按下的键是否是空格键
         event.stopPropagation(); // 阻止事件冒泡到父组件
@@ -166,23 +293,53 @@ export default {
       const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
       return new Intl.DateTimeFormat('zh-CN', options).format(date);
     },
-    async generateAnswer() {
-      this.isLoadingAnswer = true; // 开始加载时设置为 true
+    async generateContent(contentType) {
+      this.isLoading[contentType] = true;
       try {
-        const answer = await generateAnswer(this.question.question_text);
-        console.log('生成答案成功', answer);
-        this.$emit('update-question-prompt', answer); // Emit an event
+        let apiFunction;
+        switch (contentType) {
+          case 'answer':
+            apiFunction = generateAnswer;
+            break;
+          case 'truefalse':
+            apiFunction = generateTrueFalse;
+            break;
+          case 'multiplechoice':
+            apiFunction = generateMultipleChoice;
+            break;
+          case 'fillblank':
+            apiFunction = generateFillBlank;
+            break;
+          default:
+            console.error('未知的 content type:', contentType);
+            return;
+        }
+
+        const content = await apiFunction(this.question.question_text);
+        console.log(`生成 ${contentType} 成功`, content);
+
+
+        if (contentType === 'truefalse') {
+          this.generatedTrueFalse = content;
+        } else if (contentType === 'multiplechoice') {
+          this.generatedMultipleChoice = content; // Store multiple choice data
+        } else if (contentType === 'fillblank') {
+          this.generatedFillBlank = content;     // Store fill in the blank data
+        }
+
+
+        this.$emit(`update-question-${contentType}`, content); // 根据内容类型 emit 事件
       } catch (error) {
-        console.error('生成答案失败', error);
-        alert('生成答案失败，请稍后重试。');
+        console.error(`生成 ${contentType} 失败`, error);
+        alert(`生成 ${contentType} 失败，请稍后重试。`);
       } finally {
-        this.isLoadingAnswer = false; // 无论成功或失败，加载结束后设置为 false
+        this.isLoading[contentType] = false;
       }
     },
-    async saveAnswer() {
-      const questionId = this.question.question_id;
-      const newPrompt = this.question.question_prompt;
 
+    async saveContent(contentType) {
+
+      const questionId = this.question.question_id;
       if (!questionId) {
         console.error('Question ID is missing.');
         alert('无法保存，缺少题目ID。');
@@ -190,17 +347,63 @@ export default {
       }
 
       try {
-        const response = await saveAnswer(questionId, newPrompt);
-        console.log('答案保存成功', response.message);
-        this.saveStatus = '答案保存成功！';
+        let apiFunction;
+        switch (contentType) {
+          case 'answer':
+            apiFunction = saveAnswer;
+            await apiFunction(questionId, this.question.question_prompt); // Pass questionId and prompt
+            break;
+          case 'truefalse':
+            apiFunction = createDerivedTrueFalseQuestion;
+            await apiFunction( // Pass arguments individually
+              questionId,
+              this.generatedTrueFalse.question,
+              this.generatedTrueFalse.answer
+            );
+            break;
+          case 'multiplechoice':
+            apiFunction = createDerivedMultipleChoiceQuestion;
+
+            var formattedOptions = this.generatedMultipleChoice.options.map(option => ({
+              option_text: option.text,
+              is_correct: option.is_correct
+            }));
+
+            await apiFunction( // Pass arguments individually
+              questionId,
+              this.generatedMultipleChoice.question,
+              formattedOptions
+            );
+            break;
+          case 'fillblank':
+            apiFunction = createDerivedFillInTheBlankQuestion;
+
+            var formattedBlanks = this.generatedFillBlank.blanks.map(blank => ({
+              blank_order: blank.order,
+              correct_answer_pattern: blank.answer // Assuming 'answer' holds the correct answer
+            }));
+            await apiFunction(
+              questionId,
+              this.generatedFillBlank.question,
+              formattedBlanks
+            );
+
+            break;
+          default:
+            console.error('未知的 content type:', contentType);
+            return;
+        }
+
+        this.saveStatus = `${contentType} 保存成功！`;
         setTimeout(() => {
           this.saveStatus = '';
         }, 2000);
 
-        showSuccessNotification(this.$notify, '答案保存成功！', '答案'); // 调用 helper 函数并传递 $notify
+        showSuccessNotification(this.$notify, `${contentType} 保存成功！`, contentType === 'answer' ? '答案' : '衍生问题');
+
       } catch (error) {
-        console.error('答案保存失败', error);
-        alert(`答案保存失败: ${error.message || error}`); // 错误对象可能直接是message
+        console.error(`${contentType} 保存失败`, error);
+        alert(`保存失败: ${error.message || error}`);
       }
     }
   }
@@ -236,13 +439,13 @@ export default {
 }
 
 .question-detail-close {
-  position: absolute; /* Use absolute positioning */
-  top: 10px;      /* Adjust as needed */
-  right: 10px;     /* Adjust as needed */
-  font-size: 1.5rem; /* Make it easily clickable */
-  color: #aaa;      /* Style it as needed */
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  font-size: 1.5rem;
+  color: #aaa;
   cursor: pointer;
-  z-index: 10;     /* Ensure it's above other content */
+  z-index: 10;
 }
 
 .question-detail-close:hover {
@@ -250,7 +453,7 @@ export default {
 }
 
 .question-detail-modal.fullscreen .question-detail-close {
-  color: white; /* Ensure visibility in fullscreen mode */
+  color: white;
 }
 
 .question-detail-modal.fullscreen .question-detail-header {
@@ -311,7 +514,7 @@ export default {
   flex-grow: 1;
   overflow: auto;
   height: calc(100% - 50px);
-  position: relative; /* Add relative positioning for absolute child */
+  position: relative;
 }
 
 .note-tab-content {
@@ -331,8 +534,7 @@ export default {
   outline: none;
   overflow: auto;
   width: 100%;
-  /* Ensure textarea takes available height, leaving space for the button */
-  margin-bottom: 60px; /* Adjust as needed based on button height and desired spacing */
+  margin-bottom: 60px;
 }
 
 .save-note-button {
@@ -345,7 +547,7 @@ export default {
 
 .save-status-message {
   position: absolute;
-  bottom: 50px; /* 调整显示位置 */
+  bottom: 50px;
   left: 10px;
   color: green;
   font-size: 1rem;
@@ -353,15 +555,15 @@ export default {
 }
 
 .history-tab-content {
-  color: lightgray; /* Default light color for history tab content */
+  color: lightgray;
 }
 
 .question-detail-modal.fullscreen .history-tab-content {
-  color: white; /* Ensure white color in fullscreen mode */
+  color: white;
 }
 
 .saved-note-item {
-  border-bottom: 1px solid #666; /* Slightly lighter border for dark background */
+  border-bottom: 1px solid #666;
   padding-bottom: 10px;
   margin-bottom: 10px;
 }
@@ -373,11 +575,11 @@ export default {
 
 .saved-note-date {
   font-size: 0.8rem;
-  color: #999; /* Slightly lighter date color for dark background */
+  color: #999;
 }
 
 .answer-tab-content {
-  position: relative; /* To position the buttons absolutely within this */
+  position: relative;
   color: lightgray;
 }
 
@@ -385,9 +587,8 @@ export default {
   color: white;
 }
 
-/* Style for the Markdown content */
 .markdown-body {
-  color: #f0f0f0; /* Light text color for better visibility on dark background */
+  color: #f0f0f0;
   font-size: 1rem;
   line-height: 1.6;
 }
@@ -397,25 +598,23 @@ export default {
 }
 
 .scrollable-content {
-  color: #f0f0f0; /* Light text color for better visibility on dark background */
+  color: #f0f0f0;
   font-size: 1rem;
   line-height: 1.6;
-  overflow-y: auto; /* Enable vertical scrolling */
-  max-height: calc(100% - 60px); /* Adjust based on the height of the buttons and desired spacing */
-  padding-bottom: 70px; /* Add padding to ensure content isn't hidden by fixed buttons */
+  overflow-y: auto;
+  max-height: calc(100% - 60px);
+  padding-bottom: 70px;
 }
 
-/* Style for code blocks within Markdown */
 .markdown-body pre code {
-  background-color: #282c34; /* Darker background for code blocks */
-  color: #abb2bf; /* Lighter text color for code */
+  background-color: #282c34;
+  color: #abb2bf;
   padding: 10px;
   border-radius: 5px;
-  display: block; /* Ensure code blocks take full width */
-  overflow-x: auto; /* Enable horizontal scrolling for long code lines */
+  display: block;
+  overflow-x: auto;
 }
 
-/* Style for inline code within Markdown */
 .markdown-body code {
   background-color: #3e4451;
   color: #d19a66;
@@ -423,15 +622,18 @@ export default {
   border-radius: 3px;
 }
 
-/* Style for headings within Markdown */
-.markdown-body h1, .markdown-body h2, .markdown-body h3, .markdown-body h4, .markdown-body h5, .markdown-body h6 {
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4,
+.markdown-body h5,
+.markdown-body h6 {
   color: white;
   font-weight: bold;
   margin-top: 1em;
   margin-bottom: 0.5em;
 }
 
-/* Style for links within Markdown */
 .markdown-body a {
   color: #61afe6;
   text-decoration: none;
@@ -441,14 +643,13 @@ export default {
   text-decoration: underline;
 }
 
-/* Style for lists within Markdown */
-.markdown-body ul, .markdown-body ol {
+.markdown-body ul,
+.markdown-body ol {
   margin-top: 0.5em;
   margin-bottom: 0.5em;
   padding-left: 20px;
 }
 
-/* Style for blockquotes within Markdown */
 .markdown-body blockquote {
   border-left: 5px solid #555;
   padding-left: 15px;
@@ -456,7 +657,6 @@ export default {
   font-style: italic;
   color: #ccc;
 }
-
 
 .answer-action-button {
   position: absolute;
@@ -470,7 +670,7 @@ export default {
 }
 
 .answer-action-button.generate-button {
-  right: 100px; /* Adjust spacing between buttons */
+  right: 100px;
   background-color: #4CAF50;
   color: white;
 }
@@ -480,7 +680,42 @@ export default {
   color: white;
 }
 
-/* Loading Spinner Animation */
+/* 新增的衍生问题类型的样式 */
+.derived-question-tab-content {
+  position: relative;
+  /* 确保按钮相对于此容器定位 */
+  padding-bottom: 60px;
+  /* 为按钮留出空间 */
+  color: lightgray;
+}
+
+.question-detail-modal.fullscreen .derived-question-tab-content {
+  color: white;
+}
+
+.derived-action-button {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  padding: 10px 20px;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.derived-action-button.generate-button {
+  right: 100px;
+  /* 调整与保存按钮的间距 */
+  background-color: #4CAF50;
+  color: white;
+}
+
+.derived-action-button.save-button {
+  background-color: #007bff;
+  color: white;
+}
+
 .loading-spinner {
   border: 5px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
@@ -496,7 +731,12 @@ export default {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
 }
 </style>

@@ -81,7 +81,7 @@
       :is-full-screen="isQuestionDetailFullScreen"
       @close="closeQuestionDetailModal"
       @save-detail="handleSaveDetail"
-      @update-question-prompt="handleUpdateQuestionPrompt"
+      @update-question-answer="handleUpdateQuestionPrompt"
     />
   </div>
 </template>
