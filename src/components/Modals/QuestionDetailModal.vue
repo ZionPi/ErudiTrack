@@ -1,5 +1,8 @@
 <template>
-  <div :class="modalClass" v-if="isOpen" @keydown.meta.enter="saveNote" @keydown.ctrl.enter="saveNote">
+  <div :class="modalClass" v-if="isOpen" @keydown.meta.enter="saveNote" @keydown.ctrl.enter="saveNote" 
+@keydown.meta.g.prevent="generateAnswer" @keydown.ctrl.g.prevent="generateAnswer" 
+@keydown.meta.s.prevent="saveAnswer" @keydown.ctrl.s.prevent="saveAnswer"
+>
 
     <div class="question-detail-modal-content">
       <span class="question-detail-close" @click="close">×</span>
@@ -76,7 +79,7 @@
 </template>
 
 <script>
-import { generateAnswer ,saveAnswer} from '@/services/apiService'; // 引入 API 服务
+import { generateAnswer, saveAnswer } from '@/services/apiService'; // 引入 API 服务
 import { marked } from 'marked'; // 引入 marked 库
 import { showSuccessNotification } from '@/utils/helper'; // 导入通知函数
 
@@ -110,12 +113,22 @@ export default {
       return this.savedNotes.filter(note => note.questionId === this.question.question_id);
     },
     renderedAnswer() {
-      return this.question.question_prompt ? marked(this.question.question_prompt) : '';
+      return this.question.question_prompt ? marked(this.question.question_prompt) : 'sorry,no answer now.';
     }
   },
   watch: {
     question() {
       this.detailText = ''; // 当 question prop 变化时，清空 detailText
+    }
+  },
+  mounted() {
+    // 在组件挂载后，尝试从 localStorage 加载 savedNotes
+    const storedNotes = localStorage.getItem('savedNotes');
+    if (storedNotes) {
+      this.savedNotes = JSON.parse(storedNotes).map(note => ({
+        ...note,
+        timestamp: new Date(note.timestamp) // 将 timestamp 字符串转换为 Date 对象
+      }));
     }
   },
   methods: {
@@ -140,12 +153,6 @@ export default {
         localStorage.setItem('savedNotes', JSON.stringify(this.savedNotes));
 
         showSuccessNotification(this.$notify, '笔记保存成功！'); // 调用 helper 函数并传递 $notify
-
-
-        // this.saveStatus = '保存成功！';
-        // setTimeout(() => {
-        //   this.saveStatus = '';
-        // }, 2000);
       }
     },
     formatDate(date) {
@@ -166,30 +173,28 @@ export default {
       }
     },
     async saveAnswer() {
-        const questionId = this.question.question_id;
-        const newPrompt = this.question.question_prompt;
+      const questionId = this.question.question_id;
+      const newPrompt = this.question.question_prompt;
 
-        if (!questionId) {
-          console.error('Question ID is missing.');
-          alert('无法保存，缺少题目ID。');
-          return;
-        }
+      if (!questionId) {
+        console.error('Question ID is missing.');
+        alert('无法保存，缺少题目ID。');
+        return;
+      }
 
-        try {
-          const response = await saveAnswer(questionId, newPrompt);
-          console.log('答案保存成功', response.message);
-          this.saveStatus = '答案保存成功！';
-          setTimeout(() => {
-            this.saveStatus = '';
-          }, 2000);
+      try {
+        const response = await saveAnswer(questionId, newPrompt);
+        console.log('答案保存成功', response.message);
+        this.saveStatus = '答案保存成功！';
+        setTimeout(() => {
+          this.saveStatus = '';
+        }, 2000);
 
-          showSuccessNotification(this.$notify, '答案保存成功！', '答案'); // 调用 helper 函数并传递 $notify
-
-
-        } catch (error) {
-          console.error('答案保存失败', error);
-          alert(`答案保存失败: ${error.message || error}`); // 错误对象可能直接是message
-        }
+        showSuccessNotification(this.$notify, '答案保存成功！', '答案'); // 调用 helper 函数并传递 $notify
+      } catch (error) {
+        console.error('答案保存失败', error);
+        alert(`答案保存失败: ${error.message || error}`); // 错误对象可能直接是message
+      }
     }
   }
 };
