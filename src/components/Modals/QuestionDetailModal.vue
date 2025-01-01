@@ -196,21 +196,47 @@ export default {
   },
   watch: {
 
-    async activeTab(newTab) {
+   async activeTab(newTab) {
       if (newTab === 'truefalse') {
         await this.getTrueFalseHistory();
         if (this.derivedTrueFalseQuestions.length > 0) {
-          this.generatedTrueFalse = this.derivedTrueFalseQuestions[Math.floor(Math.random() * this.derivedTrueFalseQuestions.length)];
+          const randomNote = this.derivedTrueFalseQuestions[Math.floor(Math.random() * this.derivedTrueFalseQuestions.length)];
+          this.generatedTrueFalse = {
+            question: randomNote.derived_question_text, // Use the correct property name from your API response
+            answer: randomNote.correct_answer     // Use the correct property name from your API response
+          };
+        } else {
+          this.generatedTrueFalse = null; // Or some default value if no history
         }
       } else if (newTab === 'multiplechoice') {
         await this.getMultipleChoiceHistory();
         if (this.derivedMultipleChoiceQuestions.length > 0) {
-          this.generatedMultipleChoice = this.derivedMultipleChoiceQuestions[Math.floor(Math.random() * this.derivedMultipleChoiceQuestions.length)];
+          const randomNote = this.derivedMultipleChoiceQuestions[Math.floor(Math.random() * this.derivedMultipleChoiceQuestions.length)];
+          // Assuming derivedMultipleChoiceQuestions elements have question and options
+              this.generatedMultipleChoice = {
+                question: randomNote.derived_question_text, // Assuming question_text is the correct property
+                options: randomNote.options.map(option => ({
+                  text: option.option_text,
+                  is_correct: option.is_correct // Map s_correct
+                }))
+          };
+        } else {
+          this.generatedMultipleChoice = null;
         }
       } else if (newTab === 'fillblank') {
         await this.getFillBlankHistory();
         if (this.derivedFillBlankQuestions.length > 0) {
-          this.generatedFillBlank = this.derivedFillBlankQuestions[Math.floor(Math.random() * this.derivedFillBlankQuestions.length)];
+          const randomNote = this.derivedFillBlankQuestions[Math.floor(Math.random() * this.derivedFillBlankQuestions.length)];
+          // Assuming derivedFillBlankQuestions elements have question and blanks
+          this.generatedFillBlank = {
+            question: randomNote.derived_question_text, // Assuming question_text is the correct property
+            blanks: randomNote.blanks.map(blank => ({
+              order: blank.blank_order, // Map blank_order
+              answer: blank.correct_answer_pattern // Map correct_answer_pattern
+            }))
+          };
+        } else {
+          this.generatedFillBlank = null;
         }
       }
     },
