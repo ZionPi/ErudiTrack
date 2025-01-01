@@ -1,7 +1,8 @@
 import Vue from 'vue'
 import VueRouter from 'vue-router'
 import HomeView from '../views/HomeView.vue'
-import AllNotesView from '../views/AllNotesView.vue' // 确保导入了 AllNotesView
+import AllNotesView from '../views/AllNotesView.vue' 
+import ListManager from '../views/ListManager.vue'
 
 Vue.use(VueRouter)
 
@@ -16,6 +17,11 @@ const router = new VueRouter({
       path: '/all-notes',
       name: 'all-notes',
       component: AllNotesView
+    },
+    {
+      path: '/list-manager',
+      name: 'ListManager',
+      component: ListManager
     }
   ]
 })
