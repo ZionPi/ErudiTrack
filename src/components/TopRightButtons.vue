@@ -1,5 +1,10 @@
 <template>
   <div class="top-right-controls">
+    <button class="button is-small" @click="goToListManager">
+      <span class="icon">
+        <i class="fas fa-tasks"></i>
+      </span>
+    </button>
     <button class="button is-small" @click="goToAllNotes">
       <span class="icon">
         <i class="fas fa-sticky-note"></i>
@@ -85,6 +90,9 @@ export default {
   methods: {
     goToAllNotes() {
       this.$router.push('/all-notes');
+    },
+    goToListManager() {
+      this.$router.push('/list-manager');
     }
   }
 };

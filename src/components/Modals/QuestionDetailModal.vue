@@ -1,5 +1,5 @@
 <template>
-  <div :class="modalClass" v-if="isOpen" @keydown.meta.enter="saveNote" @keydown.ctrl.enter="saveNote"
+  <div :class="modalClass" v-if="isOpen" 
     @keydown.meta.g.prevent="generateContent('answer')" @keydown.ctrl.g.prevent="generateContent('answer')"
     @keydown.meta.s.prevent="saveContent('answer')" @keydown.ctrl.s.prevent="saveContent('answer')"
     @keydown.exact="handleKeyDown">
@@ -31,28 +31,20 @@
           @click="activeTab = 'analysis'">深度解析</button>
       </div>
 
-      <div class="question-detail-tab-content note-tab-content" v-if="activeTab === 'textarea'">
-        <textarea class="question-detail-textarea" v-model="detailText"
-          placeholder="在这里写下你的想法、笔记和灵感...可以尝试回答问题，记录思路，或者仅仅是随意的涂鸦。尽情发挥你的创造力吧！"></textarea>
-        <!-- <div class="save-status-message" v-if="saveStatus">{{ saveStatus }}</div> -->
-        <div class="save-status-message" v-if="saveStatus">{{ saveStatus }}</div>
+      <note-tab-content v-if="activeTab === 'textarea'" :questionId="question.question_id" @note-saved="handleNoteSaved" />
 
-        <button class="button is-primary save-note-button" @click="saveNote">保存</button>
-      </div>
       <div class="question-detail-tab-content" v-if="activeTab === 'hints'">
         这里是提示内容。
       </div>
-      <div class="question-detail-tab-content history-tab-content" v-if="activeTab === 'history'">
-        <div v-if="filteredSavedNotes.length === 0">
-          还没有保存过针对这道题的解答。
-        </div>
-        <ul v-else>
-          <li v-for="(note, index) in filteredSavedNotes" :key="index" class="saved-note-item">
-            <p class="saved-note-text">{{ note.text }}</p>
-            <p class="saved-note-date">{{ formatDate(note.timestamp) }}</p>
-          </li>
-        </ul>
-      </div>
+    
+
+      <history-tab-content
+        v-if="activeTab === 'history'"
+        :questionId="question.question_id"
+        :savedNotes="savedNotes"
+        @delete-note="deleteNote"
+      />
+
       <div class="question-detail-tab-content answer-tab-content" v-if="activeTab === 'answer'">
         <div class="markdown-body scrollable-content" v-html="renderedAnswer"></div>
         <button class="button answer-action-button generate-button" @click="generateContent('answer')"
@@ -87,9 +79,9 @@
           <ul>
             <li v-for="(option, index) in generatedMultipleChoice.options" :key="index">
               <label>
-                <input type="radio" :value="option.text" :name="'multiple-choice-' + question.question_id"
-                  :disabled="false" :checked="option.is_correct">
-                {{ option.text }} <span v-if="option.is_correct">(正确答案)</span>
+                <input type="checkbox" :value="option.text" :id="'multiple-choice-' + question.question_id + '-' + index"
+                  :checked="option.is_correct" @change="updateSelectedOptions(option.text, $event.target.checked)">
+                {{ option.text }} <span v-if="option.is_correct" style="color: green;">(正确答案)</span>
               </label>
             </li>
           </ul>
@@ -140,9 +132,25 @@ import {
 } from '@/services/apiService'; // 引入 API 服务
 import { marked } from 'marked'; // 引入 marked 库
 import { showSuccessNotification } from '@/utils/helper'; // 导入通知函数
+import NoteTabContent from '@/components/QuestionDetailModal/NoteTabContent.vue';
+import HintsTabContent from '@/components/QuestionDetailModal/HintsTabContent.vue';
+import HistoryTabContent from '@/components/QuestionDetailModal/HistoryTabContent.vue';
+import AnswerTabContent from '@/components/QuestionDetailModal/AnswerTabContent.vue';
+import TrueFalseTabContent from '@/components/QuestionDetailModal/TrueFalseTabContent.vue';
+import MultipleChoiceTabContent from '@/components/QuestionDetailModal/MultipleChoiceTabContent.vue';
+import FillBlankTabContent from '@/components/QuestionDetailModal/FillBlankTabContent.vue';
 
 export default {
   name: 'QuestionDetailModal',
+  components: {
+    NoteTabContent,
+    // HintsTabContent,
+    HistoryTabContent,
+    // AnswerTabContent,
+    // TrueFalseTabContent,
+    // MultipleChoiceTabContent,
+    // FillBlankTabContent,
+  },
   props: {
     isOpen: Boolean,
     question: {
@@ -153,10 +161,7 @@ export default {
   },
   data() {
     return {
-      detailText: '',
       activeTab: 'textarea',
-      savedNotes: [],
-      saveStatus: '', // 用于显示保存状态消息
       isLoading: {
         answer: false,
         truefalse: false,
@@ -168,7 +173,8 @@ export default {
       generatedFillBlank: null,
       derivedTrueFalseQuestions: [],
       derivedMultipleChoiceQuestions: [],
-      derivedFillBlankQuestions: []
+      derivedFillBlankQuestions: [],
+      savedNotes: []
     };
   },
   computed: {
@@ -178,9 +184,7 @@ export default {
         'fullscreen': this.isFullScreen
       };
     },
-    filteredSavedNotes() {
-      return this.savedNotes.filter(note => note.questionId === this.question.question_id);
-    },
+  
     renderedAnswer() {
       return this.question.question_prompt ? marked(this.question.question_prompt) : 'sorry,no answer now.';
     },
@@ -241,21 +245,25 @@ export default {
       }
     },
     question() {
-      this.detailText = ''; // 当 question prop 变化时，清空 detailText
       this.fetchDerivedQuestionData(); // Fetch all types when the main question changes
     }
   },
   mounted() {
-    // 在组件挂载后，尝试从 localStorage 加载 savedNotes
-    const storedNotes = localStorage.getItem('savedNotes');
-    if (storedNotes) {
-      this.savedNotes = JSON.parse(storedNotes).map(note => ({
-        ...note,
-        timestamp: new Date(note.timestamp) // 将 timestamp 字符串转换为 Date 对象
-      }));
-    }
+    this.loadInitialNotes(); 
   },
   methods: {
+    loadInitialNotes() { // THIS METHOD IS ADDED
+      const storedNotes = localStorage.getItem('savedNotes');
+      if (storedNotes) {
+        this.savedNotes = JSON.parse(storedNotes).map(note => ({
+          ...note,
+          timestamp: new Date(note.timestamp)
+        }));
+      }
+    },
+    handleNoteSaved(newNote) { // THIS METHOD IS ADDED
+      this.savedNotes.push(newNote);
+    },
     async fetchDerivedQuestionData() {
       if (this.question.question_id) {
         this.getTrueFalseHistory();
@@ -301,24 +309,7 @@ export default {
         textarea.select();
       }
     },
-    saveNote() {
-      if (this.detailText.trim() !== '' && this.question.question_id !== null) {
-        const newNote = {
-          questionId: this.question.question_id,
-          text: this.detailText,
-          timestamp: new Date()
-        };
-        this.savedNotes.push(newNote);
-        // 将更新后的 savedNotes 保存到 localStorage
-        localStorage.setItem('savedNotes', JSON.stringify(this.savedNotes));
 
-        showSuccessNotification(this.$notify, '笔记保存成功！'); // 调用 helper 函数并传递 $notify
-      }
-    },
-    formatDate(date) {
-      const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
-      return new Intl.DateTimeFormat('zh-CN', options).format(date);
-    },
     async generateContent(contentType) {
       this.isLoading[contentType] = true;
       try {
@@ -341,9 +332,8 @@ export default {
             return;
         }
 
-        const content = await apiFunction(this.question.question_text);
+        const content = await apiFunction("题目类型:" + this.question.question_type + "题目内容:" + this.question.question_text);
         console.log(`生成 ${contentType} 成功`, content);
-
 
         if (contentType === 'truefalse') {
           this.generatedTrueFalse = content;
@@ -352,7 +342,6 @@ export default {
         } else if (contentType === 'fillblank') {
           this.generatedFillBlank = content;     // Store fill in the blank data
         }
-
 
         this.$emit(`update-question-${contentType}`, content); // 根据内容类型 emit 事件
       } catch (error) {
@@ -420,17 +409,25 @@ export default {
             return;
         }
 
-        this.saveStatus = `${contentType} 保存成功！`;
-        setTimeout(() => {
-          this.saveStatus = '';
-        }, 2000);
-
         showSuccessNotification(this.$notify, `${contentType} 保存成功！`, contentType === 'answer' ? '答案' : '衍生问题');
 
       } catch (error) {
         console.error(`${contentType} 保存失败`, error);
         alert(`保存失败: ${error.message || error}`);
       }
+    },
+
+    updateSelectedOptions(optionText, isChecked) {
+      if (isChecked) {
+        this.selectedMultipleChoiceOptions.push(optionText);
+      } else {
+        this.selectedMultipleChoiceOptions = this.selectedMultipleChoiceOptions.filter(option => option !== optionText);
+      }
+    },
+    deleteNote(index) {
+        this.savedNotes.splice(index, 1);
+        localStorage.setItem('savedNotes', JSON.stringify(this.savedNotes)); // Update local storage
+        showSuccessNotification(this.$notify, '笔记删除成功！');
     }
   }
 };
@@ -580,9 +577,7 @@ export default {
   z-index: 10001;
 }
 
-.history-tab-content {
-  color: lightgray;
-}
+
 
 .question-detail-modal.fullscreen .history-tab-content {
   color: white;
@@ -592,6 +587,9 @@ export default {
   border-bottom: 1px solid #666;
   padding-bottom: 10px;
   margin-bottom: 10px;
+  display: flex; /* Added to align items */
+  justify-content: space-between; /* Added to push button to the end */
+  align-items: center; /* Added to vertically align items */
 }
 
 .saved-note-text {
@@ -698,7 +696,7 @@ export default {
 .answer-action-button.generate-button {
   right: 100px;
   background-color: #4CAF50;
-  color: white;
+ color: white;
 }
 
 .answer-action-button.save-answer-button {
@@ -765,4 +763,5 @@ export default {
     transform: rotate(360deg);
   }
 }
+
 </style>
