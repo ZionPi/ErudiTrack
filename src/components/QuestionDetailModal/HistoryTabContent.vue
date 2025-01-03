@@ -5,9 +5,9 @@
     </div>
     <ul v-else>
       <li v-for="(note, index) in filteredSavedNotes" :key="index" class="saved-note-item">
-        <p class="saved-note-text">{{ note.text }}</p>
-        <p class="saved-note-date">{{ formatDate(note.timestamp) }}</p>
-        <el-button type="danger" size="mini" icon="el-icon-delete" @click.stop="deleteNote(index)"></el-button>
+        <p class="saved-note-text">{{ note.note_text }}</p>
+        <p class="saved-note-date">{{ formatDate(note.created_at) }}</p>
+        <el-button type="danger" size="mini" icon="el-icon-delete" @click.stop="deleteNote(note.note_id)"></el-button>
       </li>
     </ul>
   </div>
@@ -28,16 +28,16 @@ export default {
   },
   computed: {
     filteredSavedNotes() {
-      return this.savedNotes.filter(note => note.questionId === this.questionId);
+      return this.savedNotes.filter(note => note.question_id === this.questionId);
     }
   },
   methods: {
-    formatDate(date) {
+    formatDate(dateString) {
       const options = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric', second: 'numeric' };
-      return new Intl.DateTimeFormat('zh-CN', options).format(date);
+      return new Intl.DateTimeFormat('zh-CN', options).format(new Date(dateString));
     },
-    deleteNote(index) {
-      this.$emit('delete-note', index);
+    deleteNote(note_id) {
+      this.$emit('delete-note', note_id);
     }
   }
 };

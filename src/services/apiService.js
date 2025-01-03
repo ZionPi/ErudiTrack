@@ -224,4 +224,67 @@ export const fetchDerivedFillInTheBlankQuestions = async (originalQuestionId) =>
   }
 };
 
+
+// 新增接口：创建每日练习笔记
+export const createDailyPracticeNote = async (userId, questionId, noteText, createdAt) => {
+  try {
+    const response = await apiClient.post('/daily_practice_notes', {
+      user_id: userId,
+      question_id: questionId,
+      note_text: noteText,
+      created_at: createdAt // 确保传递的是 ISO 格式的日期字符串
+    });
+    return response.data;
+  } catch (error) {
+    console.error('创建每日练习笔记失败', error);
+    throw error;
+  }
+};
+
+// 新增接口：批量创建每日练习笔记
+export const createDailyPracticeNotesBatch = async (notes) => {
+  try {
+    const response = await apiClient.post('/daily_practice_notes/batch', notes);
+    return response.data;
+  } catch (error) {
+    console.error('批量创建每日练习笔记失败', error);
+    throw error;
+  }
+};
+
+// 新增接口：更新每日练习笔记
+export const updateDailyPracticeNote = async (noteId, noteText) => {
+  try {
+    const response = await apiClient.put(`/daily_practice_notes/${noteId}`, {
+      note_text: noteText
+    });
+    return response.data;
+  } catch (error) {
+    console.error('更新每日练习笔记失败', error);
+    throw error;
+  }
+};
+
+// 新增接口：删除每日练习笔记
+export const deleteDailyPracticeNote = async (noteId) => {
+  try {
+    const response = await apiClient.delete(`/daily_practice_notes/${noteId}`);
+    return response.data;
+  } catch (error) {
+    console.error('删除每日练习笔记失败', error);
+    throw error;
+  }
+};
+
+// 新增接口：获取用户的所有每日练习笔记
+export const getUserDailyPracticeNotes = async (userId) => {
+  try {
+    const response = await apiClient.get(`/daily_practice_notes/user/${userId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`获取用户 ${userId} 的每日练习笔记失败`, error);
+    throw error;
+  }
+};
+
 export default apiClient;

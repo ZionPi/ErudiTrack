@@ -139,6 +139,7 @@ import AnswerTabContent from '@/components/QuestionDetailModal/AnswerTabContent.
 import TrueFalseTabContent from '@/components/QuestionDetailModal/TrueFalseTabContent.vue';
 import MultipleChoiceTabContent from '@/components/QuestionDetailModal/MultipleChoiceTabContent.vue';
 import FillBlankTabContent from '@/components/QuestionDetailModal/FillBlankTabContent.vue';
+import { getUserDailyPracticeNotes,deleteDailyPracticeNote } from '@/services/apiService'; 
 
 export default {
   name: 'QuestionDetailModal',
@@ -174,7 +175,9 @@ export default {
       derivedTrueFalseQuestions: [],
       derivedMultipleChoiceQuestions: [],
       derivedFillBlankQuestions: [],
-      savedNotes: []
+      savedNotes: [],
+      loading: false,
+      userId: 1, 
     };
   },
   computed: {
@@ -252,17 +255,21 @@ export default {
     this.loadInitialNotes(); 
   },
   methods: {
-    loadInitialNotes() { // THIS METHOD IS ADDED
-      const storedNotes = localStorage.getItem('savedNotes');
-      if (storedNotes) {
-        this.savedNotes = JSON.parse(storedNotes).map(note => ({
-          ...note,
-          timestamp: new Date(note.timestamp)
-        }));
+    async loadInitialNotes() {
+      this.loading = true;
+      try {
+        const notes = await getUserDailyPracticeNotes(this.userId);
+        this.savedNotes = notes;
+      } catch (error) {
+        console.error('加载笔记失败', error);
+        // 可以添加错误提示给用户
+        this.$message.error('加载笔记失败，请稍后重试。');
+      } finally {
+        this.loading = false;
       }
     },
-    handleNoteSaved(newNote) { // THIS METHOD IS ADDED
-      this.savedNotes.push(newNote);
+    handleNoteSaved() {
+      this.loadInitialNotes(); 
     },
     async fetchDerivedQuestionData() {
       if (this.question.question_id) {
@@ -424,10 +431,14 @@ export default {
         this.selectedMultipleChoiceOptions = this.selectedMultipleChoiceOptions.filter(option => option !== optionText);
       }
     },
-    deleteNote(index) {
-        this.savedNotes.splice(index, 1);
-        localStorage.setItem('savedNotes', JSON.stringify(this.savedNotes)); // Update local storage
-        showSuccessNotification(this.$notify, '笔记删除成功！');
+    async deleteNote(note_id) {
+        try {
+            await deleteDailyPracticeNote(note_id);
+            showSuccessNotification(this.$notify, '笔记删除成功！');
+            this.loadInitialNotes();
+        } catch (error) {
+            console.error('删除笔记失败', error);
+        } 
     }
   }
 };

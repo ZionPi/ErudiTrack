@@ -3,7 +3,8 @@ import VueRouter from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import AllNotesView from '../views/AllNotesView.vue' 
 import ListManager from '../views/ListManager.vue'
-
+import SvgToggleView from '../components/SvgToggleView.vue'
+import PdfViewer from '../components/PdfViewer.vue' 
 Vue.use(VueRouter)
 
 const router = new VueRouter({
@@ -22,6 +23,16 @@ const router = new VueRouter({
       path: '/list-manager',
       name: 'ListManager',
       component: ListManager
+    },
+    {
+      path: '/svg-view',
+      name: 'SvgToggleView',
+      component: SvgToggleView
+    },
+    {
+      path: '/pdf-viewer', 
+      name: 'pdf-viewer',
+      component: PdfViewer 
     }
   ]
 })
