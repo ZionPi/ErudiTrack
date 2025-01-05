@@ -1,8 +1,13 @@
 <template>
   <div class="list-manager-page">
     <div class="fixed-header">
+      <el-button
+        icon="el-icon-arrow-left"
+        circle
+        class="back-button"
+        @click="goBack"
+      ></el-button>
       <h1>Manage Lists</h1>
-
       <div class="search-bar">
         <el-input
           placeholder="Search lists..."
@@ -10,7 +15,6 @@
           clearable
         ></el-input>
       </div>
-
       <div class="actions">
         <el-button type="primary" @click="addList">Add List</el-button>
         <el-button type="warning" @click="toggleEditMode">
@@ -19,7 +23,11 @@
         <div v-if="isEditing">
           <el-button @click="selectAllLists">Select All</el-button>
           <el-button @click="unselectAllLists">Unselect All</el-button>
-          <el-button type="danger" @click="deleteSelectedLists" :disabled="selectedLists.length === 0">
+          <el-button
+            type="danger"
+            @click="deleteSelectedLists"
+            :disabled="selectedLists.length === 0"
+          >
             Delete Selected
           </el-button>
         </div>
@@ -30,20 +38,25 @@
       <div class="grid-container">
         <div
           v-for="list in filteredLists"
-          :key="list.id"
+          :key="list.collection_id"
           class="grid-cell"
-          :class="{ 'edit-mode': isEditing, 'selected': isEditing && selectedLists.includes(list.id) }"
-          @click="!isEditing ? showInnerList(list) : toggleSelect(list.id)"
+          :class="{
+            'edit-mode': isEditing,
+            selected: isEditing && selectedLists.includes(list.collection_id),
+          }"
+          @click="
+            !isEditing ? showInnerList(list.collection_id) : toggleSelect(list.collection_id)
+          "
         >
           <div class="cell-content">
             <el-checkbox
               v-if="isEditing"
               v-model="selectedLists"
-              :label="list.id"
+              :label="list.collection_id"
               style="position: absolute; top: 10px; left: 10px; z-index: 1;"
               @click.stop
             ></el-checkbox>
-            <span>{{ list.name }}</span>
+            <span>{{ list.collection_name }}</span>
           </div>
         </div>
       </div>
@@ -62,20 +75,20 @@
       ></el-button>
     </div>
 
-    <el-dialog :visible.sync="dialogVisible" title="List Details">
-      <div v-if="selectedList">
-        <h2>{{ selectedList.name }}</h2>
-        <ul>
-          <li v-for="(item, index) in selectedList.items" :key="index">{{ item }}</li>
-        </ul>
-      </div>
-      <span slot="footer" class="dialog-footer">
-        <el-button @click="dialogVisible = false">Close</el-button>
-      </span>
-    </el-dialog>
 
     <el-dialog :visible.sync="addDialogVisible" title="Add New List">
-      <el-input v-model="newListName" placeholder="List Name"></el-input>
+      <el-form :model="newCollection" label-width="100px">
+        <el-form-item label="List Name">
+          <el-input v-model="newCollection.collection_name" placeholder="List Name"></el-input>
+        </el-form-item>
+        <el-form-item label="Description">
+          <el-input
+            v-model="newCollection.description"
+            type="textarea"
+            placeholder="List Description"
+          ></el-input>
+        </el-form-item>
+      </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="addDialogVisible = false">Cancel</el-button>
         <el-button type="primary" @click="saveNewList">Confirm</el-button>
@@ -85,28 +98,37 @@
 </template>
 
 <script>
-import { v4 as uuidv4 } from 'uuid';
+import {
+  getAllCollections,
+  createCollection,
+  deleteCollection,
+  getCollectionItemsByCollection,
+} from '@/services/apiService'; // 确保路径正确
 
 export default {
   name: 'ListManager',
   data() {
     return {
-      lists: [
-      ],
+      collections: [],
       isEditing: false,
       selectedLists: [],
-      dialogVisible: false,
-      selectedList: null,
       addDialogVisible: false,
-      newListName: '',
+      newCollection: {
+        user_id: this.userId, // 初始值
+        collection_name: '',
+        description: '',
+      },
       searchQuery: '',
       showScrollButtons: false,
+      userId: 1, // Replace with your actual user ID logic
     };
   },
   computed: {
     filteredLists() {
       const query = this.searchQuery.toLowerCase();
-      return this.lists.filter(list => list.name.toLowerCase().includes(query));
+      return this.collections.filter((list) =>
+        list.collection_name.toLowerCase().includes(query)
+      );
     },
   },
   watch: {
@@ -118,11 +140,27 @@ export default {
     },
   },
   mounted() {
+    this.fetchCollections();
     this.checkScrollOverflow();
   },
   methods: {
+    goBack() {
+      this.$router.go(-1);
+    },
+    async fetchCollections() {
+      try {
+        const data = await getAllCollections();
+        this.collections = data;
+      } catch (error) {
+        this.$message.error('Failed to fetch lists.');
+      }
+    },
     addList() {
-      this.newListName = this.formatTimestamp(new Date());
+      this.newCollection = {
+        user_id: this.userId, // 确保每次打开都设置正确的 userId
+        collection_name: this.formatTimestamp(new Date()),
+        description: '',
+      };
       this.addDialogVisible = true;
     },
     formatTimestamp(date) {
@@ -134,11 +172,16 @@ export default {
       const seconds = String(date.getSeconds()).padStart(2, '0');
       return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
     },
-    saveNewList() {
-      if (this.newListName.trim() !== '') {
-        this.lists.push({ id: uuidv4(), name: this.newListName, items: [] });
-        this.newListName = '';
-        this.addDialogVisible = false;
+    async saveNewList() {
+      if (this.newCollection.collection_name.trim() !== '') {
+        try {
+          await createCollection(this.newCollection);
+          this.$message.success('List created successfully.');
+          this.fetchCollections();
+          this.addDialogVisible = false;
+        } catch (error) {
+          this.$message.error('Failed to create list.');
+        }
       } else {
         this.$message.warning('List name cannot be empty.');
       }
@@ -149,30 +192,36 @@ export default {
         this.selectedLists = [];
       }
     },
-    showInnerList(list) {
-      this.selectedList = list;
-      this.dialogVisible = true;
+    async showInnerList(collectionId) {
+      this.$router.push({ name: 'ListView', params: { id: collectionId } });
     },
     selectAllLists() {
-      this.selectedLists = this.lists.map(list => list.id);
+      this.selectedLists = this.collections.map((list) => list.collection_id);
     },
     unselectAllLists() {
       this.selectedLists = [];
     },
-    deleteSelectedLists() {
+    async deleteSelectedLists() {
       if (this.selectedLists.length > 0) {
-        this.lists = this.lists.filter(list => !this.selectedLists.includes(list.id));
-        this.selectedLists = [];
-        this.isEditing = false;
-        this.$message.success('Selected lists deleted successfully.');
+        try {
+          for (const id of this.selectedLists) {
+            await deleteCollection(id);
+          }
+          this.$message.success('Selected lists deleted successfully.');
+          this.fetchCollections();
+          this.selectedLists = [];
+          this.isEditing = false;
+        } catch (error) {
+          this.$message.error('Failed to delete selected lists.');
+        }
       }
     },
-    toggleSelect(listId) {
+    toggleSelect(collectionId) {
       if (this.isEditing) {
-        if (this.selectedLists.includes(listId)) {
-          this.selectedLists = this.selectedLists.filter(id => id !== listId);
+        if (this.selectedLists.includes(collectionId)) {
+          this.selectedLists = this.selectedLists.filter((id) => id !== collectionId);
         } else {
-          this.selectedLists.push(listId);
+          this.selectedLists.push(collectionId);
         }
       }
     },
@@ -198,6 +247,13 @@ export default {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+}
+
+.back-button {
+  position: absolute;
+  top: 10px;
+  left: 20px;
+  z-index: 11; /* Ensure it's above other header elements */
 }
 
 .fixed-header {

@@ -287,4 +287,203 @@ export const getUserDailyPracticeNotes = async (userId) => {
   }
 };
 
+
+// 获取所有数据源类型
+export const getAllDataSourceTypes = async () => {
+  try {
+    const response = await apiClient.get('/data_source_types');
+    return response.data;
+  } catch (error) {
+    console.error('获取所有数据源类型失败', error);
+    throw error;
+  }
+};
+
+// 添加一个新的数据源类型
+export const createDataSourceType = async (dataSourceType) => {
+  try {
+    const response = await apiClient.post('/data_source_types', { data_source_type: dataSourceType });
+    return response.data;
+  } catch (error) {
+    console.error('创建数据源类型失败', error);
+    throw error;
+  }
+};
+
+// 删除一个数据源类型
+export const deleteDataSourceType = async (dataSourceType) => {
+  try {
+    await apiClient.delete(`/data_source_types/${dataSourceType}`);
+  } catch (error) {
+    console.error('删除数据源类型失败', error);
+    throw error;
+  }
+};
+
+// 更新一个数据源类型
+export const updateDataSourceType = async (oldDataSourceType, newDataSourceType) => {
+  try {
+    const response = await apiClient.put(`/data_source_types/${oldDataSourceType}`, { data_source_type: newDataSourceType });
+    return response.data;
+  } catch (error) {
+    console.error('更新数据源类型失败', error);
+    throw error;
+  }
+};
+// 获取所有列表
+export const getAllCollections = async () => {
+  try {
+    const response = await apiClient.get('/collections');
+    return response.data;
+  } catch (error) {
+    console.error('获取所有列表失败', error);
+    throw error;
+  }
+};
+
+// 获取单个列表
+export const getCollection = async (collectionId) => {
+  try {
+    const response = await apiClient.get(`/collections/${collectionId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`获取列表 ID ${collectionId} 失败`, error);
+    throw error;
+  }
+};
+
+// 创建列表
+export const createCollection = async (collectionData) => {
+  try {
+    const response = await apiClient.post('/collections', collectionData);
+    return response.data;
+  } catch (error) {
+    console.error('创建列表失败', error);
+    throw error;
+  }
+};
+
+// 批量创建列表
+export const createCollectionsBatch = async (collectionsData) => {
+  try {
+    const response = await apiClient.post('/collections/batch', collectionsData);
+    return response.data;
+  } catch (error) {
+    console.error('批量创建列表失败', error);
+    throw error;
+  }
+};
+
+// 更新列表
+export const updateCollection = async (collectionId, collectionData) => {
+  try {
+    const response = await apiClient.put(`/collections/${collectionId}`, collectionData);
+    return response.data;
+  } catch (error) {
+    console.error(`更新列表 ID ${collectionId} 失败`, error);
+    throw error;
+  }
+};
+
+// 删除列表
+export const deleteCollection = async (collectionId) => {
+  try {
+    const response = await apiClient.delete(`/collections/${collectionId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`删除列表 ID ${collectionId} 失败`, error);
+    throw error;
+  }
+};
+
+// ---------------------- Collection Items API ----------------------
+
+// 获取所有列表项
+export const getAllCollectionItems = async () => {
+  try {
+    const response = await apiClient.get('/collection_items');
+    return response.data;
+  } catch (error) {
+    console.error('获取所有列表项失败', error);
+    throw error;
+  }
+};
+
+// 获取单个列表项
+export const getCollectionItem = async (collectionItemId) => {
+  try {
+    const response = await apiClient.get(`/collection_items/${collectionItemId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`获取列表项 ID ${collectionItemId} 失败`, error);
+    throw error;
+  }
+};
+
+// 根据 collection_id 获取列表项
+export const getCollectionItemsByCollection = async (collectionId) => {
+  try {
+    const response = await apiClient.get(`/collections/${collectionId}/items`);
+    return response.data;
+  } catch (error) {
+    console.error(`获取列表 ${collectionId} 的列表项失败`, error);
+    throw error;
+  }
+};
+
+// 创建列表项
+export const createCollectionItem = async (collectionItemData) => {
+  try {
+    const response = await apiClient.post('/collection_items', collectionItemData);
+    return response.data;
+  } catch (error) {
+    console.error('创建列表项失败', error);
+    throw error;
+  }
+};
+
+// 批量创建列表项
+export const createCollectionItemsBatch = async (collectionItemsData) => {
+  try {
+    const response = await apiClient.post('/collection_items/batch', collectionItemsData);
+    return response.data;
+  } catch (error) {
+    console.error('批量创建列表项失败', error);
+    throw error;
+  }
+};
+
+// 更新列表项
+export const updateCollectionItem = async (collectionItemId, collectionItemData) => {
+  try {
+    const response = await apiClient.put(`/collection_items/${collectionItemId}`, collectionItemData);
+    return response.data;
+  } catch (error) {
+    console.error(`更新列表项 ID ${collectionItemId} 失败`, error);
+    throw error;
+  }
+};
+
+// 删除列表项
+export const deleteCollectionItem = async (collectionItemId) => {
+  try {
+    const response = await apiClient.delete(`/collection_items/${collectionItemId}`);
+    return response.data;
+  } catch (error) {
+    console.error(`删除列表项 ID ${collectionItemId} 失败`, error);
+    throw error;
+  }
+};
+
+// 批量删除列表项
+export const deleteCollectionItemsBatch = async (itemIdsToDelete) => {
+  try {
+    const response = await apiClient.post('/collection_items/batch_delete', itemIdsToDelete);
+    return response.data;
+  } catch (error) {
+    console.error('批量删除列表项失败', error);
+    throw error;
+  }
+};
+
 export default apiClient;
