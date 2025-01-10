@@ -202,7 +202,8 @@ export default {
         hourlyCounts[date][hour] = (hourlyCounts[date][hour] || 0) + 1;
       });
 
-      const sortedDates = Object.keys(dailyCounts).sort();
+      // 修改排序方式
+      const sortedDates = Object.keys(dailyCounts).sort((a, b) => new Date(a) - new Date(b));
       const data = sortedDates.map(date => dailyCounts[date]);
 
       let option = {};
